@@ -1,0 +1,15 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:#fff}canvas{display:block}</style></head>
+<body><canvas id="out" width="1080" height="1080"></canvas>
+<script src="riso-window.js"></script>
+<script>
+const S = JSON.parse(decodeURIComponent(location.hash.slice(1)));
+(async () => {
+  try { await document.fonts.load('600 12px Inter'); } catch (e) {}
+  const t0 = performance.now();
+  try { const info = RisoWindow.renderWindow(document.getElementById('out'), S); console.log('render ms', Math.round(performance.now() - t0), JSON.stringify(info)); }
+  catch (e) { console.log('ERR', e.stack); }
+  window.__DONE = true;
+})();
+</script></body></html>
