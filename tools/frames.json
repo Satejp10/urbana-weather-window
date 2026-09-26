@@ -1,0 +1,5 @@
+{
+  "jan15-0740": {"seed":7,"season":"winter","sun":{"az":121.64,"alt":3.66},"moon":{"az":156.3,"alt":17.0,"phase":0.10},"cloud":0.69,"snowGround":0.38,"snowFall":0.17,"wind":{"mph":12.6,"fromAz":270},"tempNow":23.6,"lo":17.5,"hi":33.0,"ytdRain":1.23,"yearRain":40.92},
+  "jun10-1700-dry": {"seed":7,"season":"summer","wet":false,"sun":{"az":271.4,"alt":35.7},"cloud":0.47,"snowGround":0,"snowFall":0,"wind":{"mph":9.5,"fromAz":180},"tempNow":83.3,"lo":60.1,"hi":83.3,"ytdRain":17.55,"yearRain":40.92},
+  "jun10-1700-wet": {"seed":7,"season":"summer","wet":true,"rainIn":0.23,"sun":{"az":271.4,"alt":35.7},"cloud":0.65,"snowGround":0,"snowFall":0,"wind":{"mph":9.5,"fromAz":180},"tempNow":78.9,"lo":61.5,"hi":79.3,"ytdRain":17.55,"yearRain":40.92}
+}
