@@ -1,0 +1,67 @@
+/* ============================================================
+   PLAINCHART — canonical design tokens (formerly AA Minimalist)
+   Source of truth. Import this; do NOT invent colors or sizes.
+   Modeled on artificialanalysis.ai — white, minimal, comprehensive.
+   Satej variant: serif display replaced by Space Grotesk.
+   ============================================================ */
+
+/* Load fonts (CDN). If blocked, the stacks below degrade cleanly. */
+/* <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600;700&display=swap" rel="stylesheet"> */
+
+:root{
+  /* ---- neutrals (the canvas) ---- */
+  --bg:#ffffff;          /* page */
+  --card:#ffffff;        /* card surface (same as bg; defined by border) */
+  --ink:#1f1f1f;         /* primary text, OpenAI series, map metric */
+  --lede:#3a3a3a;        /* body emphasis / lede paragraphs */
+  --muted:#737373;       /* secondary text, axis titles, table headers */
+  --faint:#a3a3a3;       /* captions, units, tertiary, N/A text */
+  --border:#e8e8e8;      /* hairline borders, card edges, section rules */
+  --grid:#f1f1f1;        /* gridlines, bar tracks, table row dividers */
+  --axis:#dcdcdc;        /* solid axis baselines (one step darker than grid) */
+  --hover:#fafafa;       /* table-row / surface hover */
+
+  /* ---- accent (the ONE color: purple) ---- */
+  --accent:#7F4BF3;      /* eyebrows, active pills, sort arrows, bullets, focus */
+  --accent-soft:#f2ecff; /* soft fills behind accent elements */
+
+  /* ---- type ---- */
+  /* Space Grotesk = display. Inter = body/UI/labels AND first fallback for
+     Space Grotesk, so headlines never drop to a serif if the webfont fails. */
+  --display:'Space Grotesk','Inter',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --sans:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;
+
+  /* ---- shape & rhythm ---- */
+  --r:16px;              /* card radius */
+  --r-sm:5px;            /* bar / track / small radius */
+  --maxw:980px;          /* content column width */
+
+  /* ============================================================
+     CATEGORICAL ENTITY PALETTE
+     One fixed color per entity (lab/company), reused across every
+     chart so a reader learns the color once. Vivid, not pastel.
+     ============================================================ */
+  --c-openai:#1f1f1f;    /* black */
+  --c-anthropic:#cc785c; /* clay / terracotta */
+  --c-google:#34a853;    /* green */
+  --c-deepmind:#34a853;
+  --c-meta:#0089f4;      /* blue */
+  --c-mistral:#ff6900;   /* orange */
+  --c-deepseek:#2243e6;  /* deep blue */
+  --c-xai:#7c4bf3;       /* violet */
+  --c-amazon:#ff9900;    /* amazon orange */
+  --c-nvidia:#76b900;    /* nvidia green */
+  --c-upstage:#8b5cf6;   /* light violet */
+  --c-minimax:#eb3568;   /* pink/red */
+  --c-kimi:#0089f4;      /* blue (Moonshot) */
+  --c-zai:#0089f4;       /* blue */
+  --c-alibaba:#ff6a00;   /* qwen orange */
+  --c-xiaomi:#ff6900;    /* orange */
+  --c-mbzuai:#0a1f8f;    /* navy */
+  --c-cohere:#39c5bb;
+  --c-microsoft:#0089f4;
+
+  /* neutral series color when an entity has no brand color */
+  --c-neutral:#9aa0a6;
+}

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plainchart — Starter Template</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* === tokens (mirror of tokens.css — keep in sync) === */
+  :root{
+    --bg:#ffffff; --card:#ffffff; --ink:#1f1f1f; --lede:#3a3a3a;
+    --muted:#737373; --faint:#a3a3a3; --border:#e8e8e8; --grid:#f1f1f1;
+    --axis:#dcdcdc; --hover:#fafafa;
+    --accent:#7F4BF3; --accent-soft:#f2ecff;
+    --display:'Space Grotesk','Inter',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --sans:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --r:16px; --r-sm:5px; --maxw:980px;
+    --c-openai:#1f1f1f; --c-anthropic:#cc785c; --c-google:#34a853;
+    --c-meta:#0089f4; --c-mistral:#ff6900; --c-deepseek:#2243e6;
+    --c-xai:#7c4bf3; --c-nvidia:#76b900; --c-minimax:#eb3568;
+    --c-kimi:#0089f4; --c-zai:#0089f4; --c-xiaomi:#ff6900; --c-neutral:#9aa0a6;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:34px 22px 90px;}
+
+  /* header */
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:38px;}
+  .mark{display:flex;align-items:center;gap:9px;font-weight:600;font-size:14px;letter-spacing:-0.01em;}
+  .mark .glyph{width:24px;height:24px;border-radius:6px;background:var(--ink);display:grid;place-items:center;}
+  .mark .glyph::before{content:"";width:11px;height:11px;border-radius:50%;border:2.5px solid #fff;}
+  .stamp{font-size:12px;color:var(--faint);font-variant-numeric:tabular-nums;}
+  h1{font-family:var(--display);font-weight:600;font-size:clamp(2.3rem,6.4vw,3.7rem);
+    line-height:1.03;letter-spacing:-0.015em;margin:0 0 16px;max-width:16ch;}
+  .lede{font-size:clamp(1rem,2.4vw,1.16rem);color:var(--lede);max-width:62ch;margin:0;}
+  .lede b{font-weight:600;color:var(--ink);}
+
+  /* method strip */
+  .method{border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+    margin:30px 0 38px;padding:18px 0;display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start;}
+  .method .ey{font-size:11.5px;font-weight:700;letter-spacing:.13em;color:var(--accent);
+    display:flex;align-items:center;gap:8px;white-space:nowrap;padding-top:2px;}
+  .method .sq{width:13px;height:13px;border-radius:3px;background:var(--accent);}
+  .method p{margin:0;font-size:14px;color:#444;}
+
+  /* card + eyebrow */
+  .card{border:1px solid var(--border);border-radius:var(--r);padding:24px 24px 26px;margin-bottom:18px;background:var(--card);}
+  .card-h{margin-bottom:18px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+  .eyebrow{display:flex;align-items:center;gap:10px;}
+  .eyebrow .sq{width:15px;height:15px;border-radius:4px;flex:none;}
+  .eyebrow h2{font-family:var(--display);font-weight:600;font-size:1.5rem;letter-spacing:-0.01em;margin:0;line-height:1.1;}
+  .sub{font-size:13px;color:var(--muted);margin:9px 0 0;}
+  .sub b{color:var(--lede);font-weight:500;}
+  .pill-tag{font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-soft);
+    padding:4px 10px;border-radius:999px;white-space:nowrap;}
+
+  /* horizontal bars */
+  .bars{display:flex;flex-direction:column;gap:9px;margin-top:4px;}
+  .row{display:grid;grid-template-columns:148px 1fr 86px;align-items:center;gap:13px;}
+  .nm{font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;min-width:0;}
+  .nm .dot{width:9px;height:9px;border-radius:2px;flex:none;}
+  .nm .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .track{background:var(--grid);border-radius:var(--r-sm);height:19px;position:relative;overflow:hidden;}
+  .fill{height:100%;border-radius:var(--r-sm);min-width:2px;width:0;transition:width .9s cubic-bezier(.2,.7,.2,1);}
+  .fill.hatch{background:repeating-linear-gradient(45deg,#e6e6e6,#e6e6e6 5px,#f6f6f6 5px,#f6f6f6 10px)!important;}
+  .val{text-align:right;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .val .tag{font-size:10px;color:var(--faint);font-weight:500;margin-left:5px;}
+  .chart-note{font-size:11.5px;color:var(--faint);margin:16px 0 0;line-height:1.45;}
+
+  /* scatter */
+  svg.scatter{width:100%;height:auto;display:block;}
+  .ax-line{stroke:var(--grid);stroke-width:1;stroke-dasharray:2 4;}
+  .ax-base{stroke:var(--axis);stroke-width:1;}
+  .ax-tick{fill:var(--faint);font-size:11px;font-family:var(--sans);}
+  .ax-title{fill:var(--muted);font-size:12px;font-weight:600;font-family:var(--sans);}
+  .pt{fill-opacity:.62;stroke-width:1.5;transition:fill-opacity .2s;}
+  .pt:hover{fill-opacity:.85;}
+  .pt-lbl{font-size:10.5px;font-weight:600;font-family:var(--sans);fill:var(--ink);}
+  .zone{fill:#34a853;fill-opacity:.07;}
+  .zone-lbl{fill:#2e7d44;font-size:11px;font-weight:600;font-family:var(--sans);fill-opacity:.85;}
+  .legend{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:16px;font-size:12px;color:var(--muted);align-items:center;}
+  .legend .it{display:flex;align-items:center;gap:6px;}
+  .legend .it .d{width:10px;height:10px;border-radius:50%;}
+  .legend .meta{color:var(--faint);}
+
+  /* table */
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 18px;}
+  .pill{font-size:12.5px;font-weight:500;padding:6px 13px;border-radius:999px;border:1px solid var(--border);
+    background:#fff;color:#444;cursor:pointer;transition:.15s;}
+  .pill:hover{border-color:#c9c9c9;}
+  .pill[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .tbl-scroll{overflow-x:auto;margin:0 -4px;-webkit-overflow-scrolling:touch;}
+  table{border-collapse:collapse;width:100%;min-width:640px;font-size:13px;}
+  th,td{text-align:right;padding:11px 12px;border-bottom:1px solid var(--grid);white-space:nowrap;}
+  th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:#fff;}
+  thead th{font-weight:600;color:var(--muted);font-size:11.5px;letter-spacing:.02em;cursor:pointer;
+    user-select:none;border-bottom:1px solid var(--axis);}
+  thead th:hover{color:var(--ink);}
+  thead th .arr{color:var(--accent);font-size:10px;margin-left:3px;}
+  tbody tr:hover{background:var(--hover);}
+  td.chip{font-weight:600;}
+  td.chip .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:8px;vertical-align:middle;}
+  td .vd{color:var(--faint);font-weight:450;font-size:11.5px;}
+  td.dash{color:var(--faint);}
+  .num{font-variant-numeric:tabular-nums;}
+  .ok{color:#2e7d44;font-weight:600;}
+  .no{color:var(--faint);}
+
+  footer{margin-top:34px;font-size:12px;color:var(--faint);line-height:1.6;border-top:1px solid var(--border);padding-top:18px;}
+
+  @media(max-width:600px){
+    .wrap{padding:26px 16px 70px;}
+    .row{grid-template-columns:104px 1fr 72px;gap:9px;}
+    .eyebrow h2{font-size:1.3rem;}
+    .card{padding:20px 16px 22px;}
+    .method{grid-template-columns:1fr;gap:9px;}
+  }
+  @media(prefers-reduced-motion:reduce){.fill{transition:none;}}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="mark"><span class="glyph"></span>Model&nbsp;Index</div>
+    <div class="stamp">Updated June&nbsp;2026</div>
+  </div>
+
+  <h1>Frontier models, compared</h1>
+  <p class="lede">Eleven leading models scored on a single intelligence index, plotted against what they cost to run. <b>The frontier is a trade-off</b> — the smartest model is also the priciest, and the cheapest are closing the gap fast. Same data, three ways: ranked, plotted, and tabulated.</p>
+
+  <div class="method">
+    <div class="ey"><span class="sq"></span>METHOD</div>
+    <p>Intelligence = composite index across 9 evaluations. Cost = weighted average USD per index task (lower is better). Figures as published June&nbsp;2026; models marked <em>unavailable</em> are announced but not yet served.</p>
+  </div>
+
+  <!-- CARD 1: bars -->
+  <div class="card">
+    <div class="card-h">
+      <div class="eyebrow"><span class="sq" style="background:var(--accent)"></span><h2>Intelligence Index</h2></div>
+      <span class="pill-tag">Updated</span>
+    </div>
+    <p class="sub" style="margin:-8px 0 16px"><b>Higher is better</b> · composite of 9 evals</p>
+    <div class="bars" id="bars"></div>
+    <p class="chart-note">Hatched bars are announced-but-not-yet-served models. Each model keeps its lab color across all three views.</p>
+  </div>
+
+  <!-- CARD 2: scatter -->
+  <div class="card">
+    <div class="card-h">
+      <div class="eyebrow"><span class="sq" style="background:var(--c-deepseek)"></span><h2>Intelligence vs. Cost</h2></div>
+    </div>
+    <p class="sub" style="margin:-8px 0 16px">Index score against cost per task · <b>top-left wins</b></p>
+    <div id="scatter"></div>
+    <div class="legend" id="scatter-legend"></div>
+  </div>
+
+  <!-- CARD 3: table -->
+  <div class="card">
+    <div class="card-h">
+      <div class="eyebrow"><span class="sq" style="background:var(--c-anthropic)"></span><h2>Full breakdown</h2></div>
+    </div>
+    <div class="pills" id="pills"></div>
+    <div class="tbl-scroll"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+    <p class="chart-note" id="tbl-note"></p>
+  </div>
+
+  <footer>
+    Demo data adapted from publicly reported June 2026 benchmark figures for template purposes · "est" marks unpublished values · Built with the Plainchart design system.
+  </footer>
+
+</div>
+
+<script>
+/* ---------------- data ---------------- */
+const MODELS = [
+  {name:'Claude Fable 5', sub:'with fallback', e:'anthropic', intel:60, cost:3.25, speed:null, avail:false},
+  {name:'GPT-5.5',        sub:'xhigh',         e:'openai',    intel:55, cost:0.99, speed:65,   avail:true},
+  {name:'Gemini 3.1 Pro', sub:'Preview',       e:'google',    intel:46, cost:0.31, speed:117,  avail:true},
+  {name:'MiniMax-M3',     sub:'',              e:'minimax',   intel:44, cost:0.18, speed:59,   avail:true},
+  {name:'DeepSeek V4 Pro',sub:'Max',           e:'deepseek',  intel:44, cost:0.06, speed:76,   avail:true},
+  {name:'Muse Spark',     sub:'',              e:'meta',      intel:43, cost:null, speed:null, avail:true},
+  {name:'Kimi K2.6',      sub:'',              e:'kimi',      intel:43, cost:0.29, speed:41,   avail:true},
+  {name:'MiMo-V2.5-Pro',  sub:'',              e:'xiaomi',    intel:42, cost:0.06, speed:41,   avail:true},
+  {name:'Nemotron 3 Ultra',sub:'',             e:'nvidia',    intel:38, cost:0.24, speed:168,  avail:true},
+  {name:'Grok 4.3',       sub:'high',          e:'xai',       intel:38, cost:0.15, speed:170,  avail:true},
+  {name:'gpt-oss-120b',   sub:'high',          e:'openai',    intel:24, cost:0.06, speed:346,  avail:true},
+];
+const col = e => `var(--c-${e})`;
+const money = v => '$'+v.toFixed(2);
+
+/* ---------------- bars ---------------- */
+(function(){
+  const data = MODELS.slice().sort((a,b)=>b.intel-a.intel);
+  const max = Math.max(...data.map(m=>m.intel));
+  document.getElementById('bars').innerHTML = data.map(m=>{
+    const pct = Math.max(2,(m.intel/max)*100);
+    const tag = m.avail ? '' : '<span class="tag">unavailable</span>';
+    const fillCls = m.avail ? '' : ' hatch';
+    const bg = m.avail ? col(m.e) : '';
+    return `<div class="row">
+      <div class="nm"><span class="dot" style="background:${col(m.e)}"></span><span class="t">${m.name}</span></div>
+      <div class="track"><div class="fill${fillCls}" data-w="${pct}" style="background:${bg}"></div></div>
+      <div class="val">${m.intel}${tag}</div>
+    </div>`;
+  }).join('');
+  // animate in
+  requestAnimationFrame(()=>document.querySelectorAll('#bars .fill').forEach(f=>f.style.width=f.dataset.w+'%'));
+})();
+
+/* ---------------- scatter (intelligence vs cost, log-x) ---------------- */
+(function(){
+  const pts = MODELS.filter(m=>m.cost!=null);
+  const W=720,H=420, ml=46, mr=22, mt=20, mb=50;
+  const xMin=0.05, xMax=4, yMin=20, yMax=62;
+  const lg = v => Math.log10(v);
+  const px = v => ml + (lg(v)-lg(xMin))/(lg(xMax)-lg(xMin))*(W-ml-mr);
+  const py = v => H-mb - (v-yMin)/(yMax-yMin)*(H-mt-mb);
+  const xticks=[0.1,0.3,1,3], yticks=[20,30,40,50,60];
+
+  let g='';
+  // "most attractive" zone: top-left (high intelligence, low cost)
+  g+=`<polygon class="zone" points="${ml},${mt} ${px(0.4)},${mt} ${ml},${py(38)}"/>`;
+  g+=`<text class="zone-lbl" x="${ml+8}" y="${mt+18}">Best value</text>`;
+  // gridlines (dotted) + ticks
+  yticks.forEach(t=>{ g+=`<line class="ax-line" x1="${ml}" y1="${py(t)}" x2="${W-mr}" y2="${py(t)}"/>
+    <text class="ax-tick" x="${ml-9}" y="${py(t)+4}" text-anchor="end">${t}</text>`; });
+  xticks.forEach(t=>{ g+=`<line class="ax-line" x1="${px(t)}" y1="${mt}" x2="${px(t)}" y2="${H-mb}"/>
+    <text class="ax-tick" x="${px(t)}" y="${H-mb+19}" text-anchor="middle">$${t}</text>`; });
+  // solid baselines
+  g+=`<line class="ax-base" x1="${ml}" y1="${H-mb}" x2="${W-mr}" y2="${H-mb}"/>
+      <line class="ax-base" x1="${ml}" y1="${mt}" x2="${ml}" y2="${H-mb}"/>`;
+  g+=`<text class="ax-title" x="${(ml+W-mr)/2}" y="${H-6}" text-anchor="middle">Cost per task (USD, log) →</text>`;
+  g+=`<text class="ax-title" transform="translate(13 ${(mt+H-mb)/2}) rotate(-90)" text-anchor="middle">Intelligence Index →</text>`;
+
+  // label offsets to reduce collisions (demo data tuned)
+  const off={'Claude Fable 5':[-12,-10,'end'],'GPT-5.5':[-11,-8,'end'],'DeepSeek V4 Pro':[12,4,'start'],
+    'MiniMax-M3':[-11,-9,'end'],'gpt-oss-120b':[12,4,'start'],'MiMo-V2.5-Pro':[0,18,'middle'],
+    'Grok 4.3':[12,-9,'start'],'Nemotron 3 Ultra':[12,4,'start'],'Kimi K2.6':[12,12,'start'],'Gemini 3.1 Pro':[12,4,'start']};
+  pts.forEach(m=>{
+    const x=px(m.cost), y=py(m.intel);
+    g+=`<circle class="pt" cx="${x}" cy="${y}" r="8" fill="${col(m.e)}" stroke="${col(m.e)}">
+        <title>${m.name} — index ${m.intel} · ${money(m.cost)}/task</title></circle>`;
+    const o=off[m.name]||[11,4,'start'];
+    g+=`<text class="pt-lbl" x="${x+o[0]}" y="${y+o[1]}" text-anchor="${o[2]}">${m.name}</text>`;
+  });
+  document.getElementById('scatter').innerHTML =
+    `<svg class="scatter" viewBox="0 0 ${W} ${H}" role="img" aria-label="Intelligence index versus cost per task">${g}</svg>`;
+
+  // legend = entities present
+  const ents=[...new Map(pts.map(m=>[m.e,m.name])).keys()];
+  const nice={openai:'OpenAI',anthropic:'Anthropic',google:'Google',meta:'Meta',deepseek:'DeepSeek',
+    xai:'xAI',nvidia:'NVIDIA',minimax:'MiniMax',kimi:'Kimi',xiaomi:'Xiaomi'};
+  document.getElementById('scatter-legend').innerHTML =
+    ents.map(e=>`<span class="it"><span class="d" style="background:${col(e)}"></span>${nice[e]||e}</span>`).join('')
+    + `<span class="it meta">shaded = high intelligence, low cost</span>`;
+})();
+
+/* ---------------- table ---------------- */
+(function(){
+  const COLS=[
+    {k:'name', l:'Model',          t:'s'},
+    {k:'intel',l:'Intelligence',   t:'n'},
+    {k:'cost', l:'$/task',         t:'n'},
+    {k:'speed',l:'Tokens/s',       t:'n'},
+    {k:'avail',l:'Status',         t:'b'},
+  ];
+  const thead=document.querySelector('#tbl thead');
+  const tbody=document.querySelector('#tbl tbody');
+  let sort={k:'intel',dir:-1}, filter='all';
+  const FILTERS=[{id:'all',l:'All models'},{id:'avail',l:'Available now'},{id:'top',l:'Index ≥ 44'}];
+  document.getElementById('pills').innerHTML = FILTERS.map(f=>
+    `<button class="pill" data-f="${f.id}" aria-pressed="${f.id==='all'}">${f.l}</button>`).join('');
+
+  const passes = m => filter==='avail' ? m.avail : filter==='top' ? m.intel>=44 : true;
+  function cell(m,c){
+    if(c.k==='name') return `<td class="chip"><span class="dot" style="background:${col(m.e)}"></span>${m.name}${m.sub?`<span class="vd"> · ${m.sub}</span>`:''}</td>`;
+    if(c.k==='avail') return `<td>${m.avail?'<span class="ok">Live</span>':'<span class="no">Announced</span>'}</td>`;
+    let v=m[c.k];
+    if(v==null) return `<td class="dash num">—</td>`;
+    if(c.k==='cost') return `<td class="num">${money(v)}</td>`;
+    return `<td class="num">${v}</td>`;
+  }
+  function render(){
+    thead.innerHTML='<tr>'+COLS.map(c=>{
+      const a = sort.k===c.k ? `<span class="arr">${sort.dir<0?'▼':'▲'}</span>` : '';
+      return `<th data-k="${c.k}" data-t="${c.t}">${c.l}${a}</th>`;
+    }).join('')+'</tr>';
+    const rows=MODELS.filter(passes).slice().sort((a,b)=>{
+      let x=a[sort.k], y=b[sort.k];
+      if(sort.k==='name'){return x.localeCompare(y)*sort.dir;}
+      if(x==null&&y==null)return 0; if(x==null)return 1; if(y==null)return -1;
+      return (x-y)*sort.dir;
+    });
+    tbody.innerHTML=rows.map(m=>'<tr>'+COLS.map(c=>cell(m,c)).join('')+'</tr>').join('');
+    thead.querySelectorAll('th').forEach(th=>th.onclick=()=>{
+      const k=th.dataset.k;
+      if(sort.k===k) sort.dir*=-1; else sort={k,dir:th.dataset.t==='s'?1:-1};
+      render();
+    });
+  }
+  document.querySelectorAll('#pills .pill').forEach(p=>p.onclick=()=>{
+    filter=p.dataset.f;
+    document.querySelectorAll('#pills .pill').forEach(x=>x.setAttribute('aria-pressed',x===p));
+    render();
+  });
+  render();
+  document.getElementById('tbl-note').innerHTML='Click any column to sort; filter with the pills above. First column stays pinned on horizontal scroll.';
+})();
+</script>
+</body>
+</html>
