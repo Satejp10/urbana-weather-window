@@ -1,0 +1,267 @@
+<title>Riso Print Speed Test</title>
+<!-- Template for the print speed test page. Build the self-contained page with: python3 tools/bench.py (writes tools/out/bench.html). -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #ffffff; --ink: #1f1f1f; --lede: #3a3a3a; --muted: #737373; --faint: #a3a3a3;
+    --border: #e8e8e8; --grid: #f1f1f1; --hover: #fafafa; --accent: #7F4BF3; --accent-soft: #f2ecff;
+    --good: #1e7f3c; --good-soft: #e6f4ea; --bad: #b3261e; --bad-soft: #fce8e6; --on-ink: #ffffff;
+    --display: 'Space Grotesk', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+    --r: 16px; --r-sm: 5px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #141414; --ink: #ececec; --lede: #d2d2d2; --muted: #a3a3a3; --faint: #767676;
+      --border: #2c2c2c; --grid: #202020; --hover: #1b1b1b; --accent: #a585ff; --accent-soft: #2a2142;
+      --good: #6fcf8a; --good-soft: #16301f; --bad: #f28b82; --bad-soft: #3a1c1a; --on-ink: #141414;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #141414; --ink: #ececec; --lede: #d2d2d2; --muted: #a3a3a3; --faint: #767676;
+    --border: #2c2c2c; --grid: #202020; --hover: #1b1b1b; --accent: #a585ff; --accent-soft: #2a2142;
+    --good: #6fcf8a; --good-soft: #16301f; --bad: #f28b82; --bad-soft: #3a1c1a; --on-ink: #141414;
+  }
+  body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--sans); }
+  .wrap { max-width: 980px; margin: 0 auto; padding-inline: 22px; padding-block: 28px 90px; display: grid; gap: 38px; }
+  .top { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .top b { color: var(--ink); font: 600 14px var(--display); }
+  h1 { font: 600 clamp(2rem, 5.6vw, 3.1rem)/1.04 var(--display); letter-spacing: -0.015em; margin: 0 0 14px; text-wrap: balance; }
+  h2 { font: 600 19px/1.3 var(--display); margin: 0; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2::before { content: ""; width: 11px; height: 11px; border-radius: 3px; background: var(--sq, var(--accent)); flex: none; }
+  p { margin: 0; }
+  .lede { color: var(--lede); max-width: 62ch; font-size: 16px; }
+  .sub { color: var(--muted); font-size: 13.5px; margin-top: 4px; }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-top: 22px; }
+  button { font: 600 14px var(--sans); border-radius: 999px; padding: 10px 20px; cursor: pointer; border: 1px solid var(--ink); background: var(--ink); color: var(--on-ink); }
+  button.ghost { background: transparent; color: var(--ink); border-color: var(--border); }
+  button:disabled { opacity: 0.45; cursor: default; }
+  button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #status { color: var(--muted); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  .card { border: 1px solid var(--border); border-radius: var(--r); padding: 22px; display: grid; gap: 16px; min-width: 0; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .pill { font-size: 12.5px; font-weight: 600; padding: 3px 11px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+  .pill.good { background: var(--good-soft); color: var(--good); }
+  .pill.bad { background: var(--bad-soft); color: var(--bad); }
+  .meta { font-size: 13px; color: var(--muted); display: grid; gap: 2px; overflow-wrap: anywhere; }
+  .meta span { color: var(--faint); }
+  .tablewrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+  th { text-align: right; font-weight: 500; color: var(--muted); font-size: 12.5px; padding: 0 12px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { text-align: right; padding: 10px 12px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; padding-left: 0; }
+  tbody tr:hover { background: var(--hover); }
+  td small { display: block; color: var(--faint); font-size: 11.5px; }
+  td.speed.good { color: var(--good); font-weight: 600; }
+  td.speed.bad { color: var(--bad); font-weight: 600; }
+  #cloud td.speed { color: inherit; font-weight: inherit; }
+  .frames { display: grid; gap: 22px; }
+  .frame { display: grid; gap: 8px; }
+  .frame h3 { font: 500 14px var(--sans); margin: 0; color: var(--lede); }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  figure { margin: 0; display: grid; gap: 6px; min-width: 0; }
+  figcaption { font-size: 12.5px; color: var(--muted); }
+  canvas { display: block; width: 100%; height: auto; aspect-ratio: 1; max-width: 100%; background: var(--grid); border-radius: var(--r-sm); }
+  textarea { width: 100%; box-sizing: border-box; min-height: 330px; resize: vertical; font: 12.5px/1.5 var(--mono); color: var(--ink); background: var(--hover); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 12px; white-space: pre; overflow-wrap: normal; overflow-x: auto; }
+  .method { border-block: 1px solid var(--border); padding-block: 16px; display: grid; gap: 8px; font-size: 13.5px; color: var(--lede); max-width: 78ch; }
+  .method b { font-size: 11.5px; letter-spacing: 0.08em; color: var(--accent); }
+  footer { font-size: 12.5px; color: var(--faint); border-top: 1px solid var(--border); padding-top: 14px; }
+</style>
+
+<div class="wrap">
+  <div class="top"><b>Urbana Weather Window</b><span id="built"></span></div>
+
+  <header>
+    <h1>Riso print speed test</h1>
+    <p class="lede">This page draws the three approved window frames at 1080 × 1080 twice each: once with the CPU print and once with the WebGL print on your graphics chip. It times both and checks that the two prints match pixel for pixel. The whole run takes about a minute.</p>
+    <div class="actions">
+      <button id="run" type="button">Run test</button>
+      <button id="copy" class="ghost" type="button" disabled>Copy results</button>
+      <span id="status" role="status">Not run yet. Keep this tab in front while it runs.</span>
+    </div>
+  </header>
+
+  <section class="card" aria-labelledby="mine-h">
+    <div class="head">
+      <div><h2 id="mine-h">Your machine</h2><p class="sub">Milliseconds per frame, median of 3 repeat renders. Lower is better. Speed-up is CPU print ÷ WebGL print; the target is 10×.</p></div>
+      <span id="verdict" class="pill">Not run yet</span>
+    </div>
+    <div class="meta" id="mine-meta"><div><span>Graphics</span> <em id="gpu">checked when you run the test</em></div></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Frame</th><th>Scene</th><th>CPU print</th><th>WebGL print</th><th>Speed-up</th><th>Pixel diff</th></tr></thead>
+      <tbody id="mine"></tbody>
+    </table></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>WebGL print, one extra render</th><th>Upload plates</th><th>Shader</th><th>Copy to page</th></tr></thead>
+      <tbody id="parts"></tbody>
+    </table></div>
+  </section>
+
+  <section class="card" aria-labelledby="cloud-h" style="--sq: var(--faint)">
+    <div class="head">
+      <div><h2 id="cloud-h">Cloud test machine</h2><p class="sub">The same test in headless Chromium with no graphics chip. WebGL there runs on SwiftShader, which draws on the CPU, so no speed-up is expected.</p></div>
+      <span id="cloud-verdict" class="pill"></span>
+    </div>
+    <div class="meta"><div><span>Graphics</span> <em id="cloud-gpu"></em></div></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Frame</th><th>Scene</th><th>CPU print</th><th>WebGL print</th><th>Speed-up</th><th>Pixel diff</th></tr></thead>
+      <tbody id="cloud"></tbody>
+    </table></div>
+  </section>
+
+  <section class="card" aria-labelledby="renders-h" style="--sq: var(--ink)">
+    <div><h2 id="renders-h">The prints</h2><p class="sub">CPU on the left, WebGL on the right. They should look identical.</p></div>
+    <div class="frames" id="frames"></div>
+  </section>
+
+  <section class="card" aria-labelledby="report-h">
+    <div class="head">
+      <div><h2 id="report-h">Results to paste</h2><p class="sub">Press Copy results, or select this text, and paste it into the chat.</p></div>
+    </div>
+    <textarea id="report" wrap="off" readonly aria-label="Results as text">Run the test first.</textarea>
+  </section>
+
+  <div class="method">
+    <b>HOW IT IS TIMED</b>
+    <p>The print step turns the 8 ink plates into halftone dots on paper. Its time starts after the plates finish drawing and ends when the printed image is on the page. The WebGL time includes uploading the 8 plates to the graphics chip and waiting for it to finish. Scene is the rest of the frame: drawing the plates and the paper-white marks.</p>
+    <p>Each frame renders once to warm up, then 3 more times; the tables show the median. Pixel diff is the mean difference between the two prints over red, green and blue, out of 255, with the largest single difference in brackets. It must stay at 2 or below.</p>
+  </div>
+
+  <footer id="foot">Renderer: renderer/riso-window.js. Frames: tools/frames.json.</footer>
+</div>
+
+<script src="../renderer/riso-window.js"></script>
+<script>
+const FRAMES = /*FRAMES*/null, CLOUD = /*CLOUD*/null, BUILD = /*BUILD*/'';
+const RUNS = 3, $ = (id) => document.getElementById(id);
+const fmt = (ms) => (ms == null ? 'n/a' : ms < 100 ? ms.toFixed(1) : String(Math.round(ms)));
+const median = (a) => { const s = [...a].sort((x, y) => x - y), n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : null; };
+const pause = () => new Promise((r) => { requestAnimationFrame(() => setTimeout(r, 0)); setTimeout(r, 120); });
+
+// Times the parts of one WebGL print by wrapping the calls printGL makes. Only on during the extra breakdown render.
+// Reading one pixel back makes the graphics chip finish everything before it, so each part is timed to completion.
+const probe = { on: false, px: new Uint8Array(4) };
+if (window.WebGL2RenderingContext) {
+  const G = WebGL2RenderingContext.prototype, C = CanvasRenderingContext2D.prototype, up = G.texSubImage3D, draw = G.drawArrays, img = C.drawImage;
+  const sync = (gl) => gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, probe.px);
+  G.texSubImage3D = function (...a) { if (probe.on && probe.n++ === 0) probe.t0 = performance.now(); const r = up.apply(this, a); if (probe.on && probe.n === 8) { sync(this); probe.t1 = performance.now(); } return r; };
+  G.drawArrays = function (...a) { const r = draw.apply(this, a); if (probe.on) { sync(this); probe.t2 = performance.now(); } return r; };
+  C.drawImage = function (...a) { if (!probe.on || !probe.t2 || probe.copy != null) return img.apply(this, a); const t = performance.now(), r = img.apply(this, a); probe.copy = performance.now() - t; return r; };
+}
+
+function gpuName() {
+  const g = document.createElement('canvas').getContext('webgl2');
+  if (!g) return 'No WebGL2 in this browser';
+  const x = g.getExtension('WEBGL_debug_renderer_info');
+  return g.getParameter(x ? x.UNMASKED_RENDERER_WEBGL : g.RENDERER);
+}
+function pixelDiff(a, b) {
+  const A = a.getContext('2d').getImageData(0, 0, a.width, a.height).data, B = b.getContext('2d').getImageData(0, 0, b.width, b.height).data;
+  let s = 0, mx = 0;
+  for (let i = 0; i < A.length; i += 4) for (let c = 0; c < 3; c++) { const d = Math.abs(A[i + c] - B[i + c]); s += d; if (d > mx) mx = d; }
+  return { mean: s / (A.length * 0.75), max: mx };
+}
+function row(r) {
+  const tr = document.createElement('tr'), sp = r.speedup;
+  const cell = (html, cls) => { const td = document.createElement('td'); td.innerHTML = html; if (cls) td.className = cls; tr.append(td); };
+  cell(r.frame);
+  cell(r.sceneMs == null ? '…' : fmt(r.sceneMs));
+  cell(r.cpuMs == null ? '…' : fmt(r.cpuMs) + (r.cpuFirst != null ? `<small>first ${fmt(r.cpuFirst)}</small>` : ''));
+  cell(r.webglMs == null ? (r.fallback ? 'no WebGL2' : '…') : fmt(r.webglMs) + (r.webglFirst != null ? `<small>first ${fmt(r.webglFirst)}</small>` : ''));
+  cell(r.fallback ? 'n/a' : sp == null ? '…' : sp.toFixed(1) + '×', 'speed ' + (sp == null ? '' : sp >= 10 ? 'good' : 'bad'));
+  cell(r.diff == null ? '…' : `${r.diff.toFixed(3)} <small>max ${r.maxDiff}</small>`);
+  return tr;
+}
+function verdict(el, rows, neutral) {
+  const sp = rows.map((r) => r.speedup).filter((v) => v != null);
+  if (!sp.length) return;
+  const worst = Math.min(...sp), okDiff = rows.every((r) => r.diff != null && r.diff <= 2);
+  el.className = 'pill ' + (neutral ? '' : worst >= 10 && okDiff ? 'good' : 'bad');
+  el.textContent = worst >= 10 ? `10× target met (worst ${worst.toFixed(1)}×)` : `10× target missed (worst ${worst.toFixed(1)}×)`;
+  if (!okDiff) el.textContent += ', prints differ';
+}
+
+function setup() {
+  $('built').textContent = BUILD ? 'Build ' + BUILD : '';
+  if (!FRAMES) { $('status').textContent = 'This template has no frames. Build the page with python3 tools/bench.py.'; $('run').disabled = true; return; }
+  if (CLOUD) {
+    $('cloud-gpu').textContent = CLOUD.gpu + ' · ' + CLOUD.browser;
+    for (const f of CLOUD.frames) $('cloud').append(row(f));
+    verdict($('cloud-verdict'), CLOUD.frames, true);
+  } else $('cloud-gpu').textContent = 'No results baked in. Run python3 tools/check_frames.py --webgl, then rebuild.';
+  for (const name of Object.keys(FRAMES)) {
+    $('mine').append(row({ frame: name }));
+    const f = document.createElement('div'); f.className = 'frame';
+    f.innerHTML = `<h3>${name}</h3><div class="pair"><figure><canvas width="1080" height="1080" id="cpu-${name}"></canvas><figcaption>CPU print</figcaption></figure><figure><canvas width="1080" height="1080" id="webgl-${name}"></canvas><figcaption>WebGL print</figcaption></figure></div>`;
+    $('frames').append(f);
+  }
+}
+
+async function run() {
+  $('run').disabled = true; $('copy').disabled = true;
+  const gpu = gpuName(); $('gpu').textContent = gpu;
+  try { await document.fonts.load('600 12px Inter'); } catch (e) {}
+  const results = [], parts = [];
+  for (const [name, params] of Object.entries(FRAMES)) {
+    const r = { frame: name }, reps = { cpu: [], webgl: [] }, first = {};
+    for (const mode of ['cpu', 'webgl']) {
+      const cv = $(`${mode}-${name}`), S = { ...params, print: mode };
+      for (let i = 0; i <= RUNS; i++) {
+        $('status').textContent = `${name}: ${mode === 'cpu' ? 'CPU' : 'WebGL'} print, render ${i + 1} of ${RUNS + 1}`;
+        await pause();
+        const t = performance.now(), info = RisoWindow.renderWindow(cv, S), total = performance.now() - t;
+        if (info.print !== mode) { r.fallback = true; break; }
+        if (i === 0) first[mode] = info.printMs; else reps[mode].push({ total, print: info.printMs });
+      }
+    }
+    r.cpuFirst = first.cpu; r.cpuMs = median(reps.cpu.map((x) => x.print));
+    r.sceneMs = median([...reps.cpu, ...reps.webgl].map((x) => x.total - x.print));
+    if (!r.fallback) {
+      r.webglFirst = first.webgl; r.webglMs = median(reps.webgl.map((x) => x.print)); r.speedup = r.cpuMs / r.webglMs;
+      const d = pixelDiff($(`cpu-${name}`), $(`webgl-${name}`)); r.diff = d.mean; r.maxDiff = d.max;
+      $('status').textContent = `${name}: timing the parts of one WebGL print`;
+      await pause();
+      Object.assign(probe, { on: true, n: 0, t0: 0, t1: 0, t2: 0, copy: null });
+      RisoWindow.renderWindow($(`webgl-${name}`), { ...params, print: 'webgl' });
+      probe.on = false;
+      const p = { frame: name, upload: probe.t1 - probe.t0, shader: probe.t2 - probe.t1, copy: probe.copy };
+      parts.push(p);
+      const tr = document.createElement('tr'); tr.innerHTML = `<td>${name}</td><td>${fmt(p.upload)}</td><td>${fmt(p.shader)}</td><td>${fmt(p.copy)}</td>`; $('parts').append(tr);
+    }
+    results.push(r);
+    $('mine').replaceChildren(...Object.keys(FRAMES).map((n) => row(results.find((x) => x.frame === n) || { frame: n })));
+  }
+  verdict($('verdict'), results);
+  $('report').value = report(gpu, results, parts);
+  $('status').textContent = 'Done. Copy the results and paste them into the chat.';
+  $('run').disabled = false; $('copy').disabled = false;
+}
+
+function report(gpu, results, parts) {
+  const pad = (s, n) => String(s).padEnd(n), lpad = (s, n) => String(s).padStart(n);
+  const L = [`Riso print speed test${BUILD ? ' · build ' + BUILD : ''}`, `GPU: ${gpu}`, `Browser: ${navigator.userAgent}`,
+    `Threads: ${navigator.hardwareConcurrency || '?'} · device pixel ratio ${devicePixelRatio}`,
+    `1080x1080 frames. ms = median of ${RUNS} repeat renders, first render in brackets.`, '',
+    pad('frame', 16) + lpad('scene', 7) + lpad('CPU print', 18) + lpad('WebGL print', 18) + lpad('speed-up', 10) + '  diff/255 (max)'];
+  for (const r of results) {
+    L.push(pad(r.frame, 16) + lpad(fmt(r.sceneMs), 7) + lpad(`${fmt(r.cpuMs)} (${fmt(r.cpuFirst)})`, 18) +
+      lpad(r.fallback ? 'no WebGL2' : `${fmt(r.webglMs)} (${fmt(r.webglFirst)})`, 18) + lpad(r.speedup ? r.speedup.toFixed(1) + 'x' : '-', 10) +
+      (r.diff != null ? `  ${r.diff.toFixed(3)} (${r.maxDiff})` : ''));
+  }
+  if (parts.length) { L.push('', 'WebGL print parts (ms): upload plates / shader / copy to page'); for (const p of parts) L.push(pad(p.frame, 16) + `${fmt(p.upload)} / ${fmt(p.shader)} / ${fmt(p.copy)}`); }
+  const sp = results.map((r) => r.speedup).filter(Boolean);
+  if (sp.length) L.push('', `10x target: ${Math.min(...sp) >= 10 ? 'met' : 'missed'} (worst ${Math.min(...sp).toFixed(1)}x)`);
+  return L.join('\n');
+}
+
+$('run').addEventListener('click', () => run().catch((e) => { $('status').textContent = 'Stopped: ' + e.message; $('run').disabled = false; }));
+$('copy').addEventListener('click', async () => {
+  const t = $('report');
+  try { await navigator.clipboard.writeText(t.value); $('status').textContent = 'Copied. Paste it into the chat.'; }
+  catch (e) { t.focus(); t.select(); $('status').textContent = 'Copy was blocked here. The text is selected: press Ctrl+C or Cmd+C.'; }
+});
+setup();
+</script>
