@@ -1,5 +1,6 @@
 /* Riso window renderer v17 (8 inks; winter + summer scenes; wet days). Scene -> ink plates (coverage) -> round-dot halftone -> multiply on paper.
-   Every data-driven mark reads from the params object; randomness is seeded, so a frame is reproducible. */
+   Every data-driven mark reads from the params object; randomness is seeded, so a frame is reproducible.
+   params.print = 'webgl' runs the print step on the GPU with the same math (falls back to the CPU print, which stays the reference). */
 (function (global) {
   const TAU = Math.PI * 2, DEG = Math.PI / 180;
   const KEYS = ['Y', 'O', 'P', 'V', 'A', 'B', 'F', 'G'];   // yellow, orange, fluorescent pink, violet, aqua, blue, federal blue, green
@@ -79,13 +80,16 @@
   };
 
   // ------------------- print: one round-dot screen per ink, blended with the continuous tone ("texture")
+  const SCREEN = { Y: [0, 0, 0, 11], O: [15, 0.8, 0.5, 13], P: [75, 1.3, -0.8, 23], V: [45, -0.6, -1.0, 29], A: [60, -1.2, 0.4, 31], B: [30, -0.9, 1.1, 37], F: [105, 0.5, 1.3, 41], G: [82, -0.4, 0.9, 43] };   // angle, misregistration x, y, seed
+  function mottle(W, H, sd) {                                        // ink density 90-100%, one grid point per 24 px
+    const gw = Math.ceil(W / 24) + 2, gh = Math.ceil(H / 24) + 2, grid = new Float32Array(gw * gh);
+    for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) grid[j * gw + i] = 0.9 + 0.1 * fbm(i / 4, j / 4, sd, 3);
+    return { grid, gw, gh };
+  }
   Plates.prototype.print = function (outCtx, opt = {}) {
     const W = this.W, H = this.H, pitch = opt.pitch || 4.2, tex = opt.texture ?? 0.45;
-    const cfg = { Y: [0, 0, 0, 11], O: [15, 0.8, 0.5, 13], P: [75, 1.3, -0.8, 23], V: [45, -0.6, -1.0, 29], A: [60, -1.2, 0.4, 31], B: [30, -0.9, 1.1, 37], F: [105, 0.5, 1.3, 41], G: [82, -0.4, 0.9, 43] };
     const inks = KEYS.map((k) => {
-      const [ang, ox, oy, sd] = cfg[k], data = this.p[k].getImageData(0, 0, W, H).data;
-      const gw = Math.ceil(W / 24) + 2, gh = Math.ceil(H / 24) + 2, grid = new Float32Array(gw * gh);
-      for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) grid[j * gw + i] = 0.9 + 0.1 * fbm(i / 4, j / 4, sd, 3);
+      const [ang, ox, oy, sd] = SCREEN[k], data = this.p[k].getImageData(0, 0, W, H).data, { grid, gw } = mottle(W, H, sd);
       return { data, ca: Math.cos(ang * DEG) / pitch, sa: Math.sin(ang * DEG) / pitch, ox, oy, f: INK[k].map((v) => 1 - v / 255), grid, gw, s: sd };
     });
     const out = outCtx.createImageData(W, H), o = out.data, IP = 1 / Math.PI;
@@ -117,6 +121,100 @@
       }
     }
     outCtx.putImageData(out, 0, 0);
+  };
+
+  // ------------------- the same print on the GPU (WebGL2): the fragment shader is print()'s pixel loop, in float32.
+  // Thresholds compare the plate byte and the hash as integers, so they flip exactly where print()'s do.
+  const PRINT_VS = '#version 300 es\nvoid main() { gl_Position = vec4(float((gl_VertexID & 1) * 4 - 1), float((gl_VertexID & 2) * 2 - 1), 0.0, 1.0); }';
+  const PRINT_FS = `#version 300 es
+precision highp float; precision highp int; precision highp sampler2DArray;
+uniform sampler2DArray uPlate, uMottle;   // plates: 8 layers of R8, paper = 1; mottle: 2 layers of RGBA32F, 4 inks each
+uniform int uW, uH;
+uniform float uPitch, uTex;
+uniform vec4 uScreen[8];                  // cos / pitch, sin / pitch, misregistration x, y
+uniform ivec2 uShift[8];                  // misregistration rounded to whole pixels, as print() samples the plate
+uniform vec3 uInk[8];                     // 1 - ink / 255
+uniform uint uSeed[8];
+out vec4 outColor;
+const float IP = 0.3183098861837907;
+uint hashu(int x, int y, uint s) { uint h = uint(x) * 374761393u + uint(y) * 668265263u + s * 1442695041u; h = (h ^ (h >> 13u)) * 1274126177u; return h ^ (h >> 16u); }
+float hash2(int x, int y, uint s) { return float(hashu(x, y, s)) / 4294967296.0; }
+float vnoise(float x, float y, uint s) {
+  float xi = floor(x), yi = floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3.0 - 2.0 * xf), v = yf * yf * (3.0 - 2.0 * yf);
+  int i = int(xi), j = int(yi);
+  float a = hash2(i, j, s), b = hash2(i + 1, j, s), c = hash2(i, j + 1, s), d = hash2(i + 1, j + 1, s);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+void main() {
+  int x = int(gl_FragCoord.x), y = uH - 1 - int(gl_FragCoord.y);
+  float n = (hash2(x, y, 5u) - 0.5) * 5.0 + (vnoise(float(x) / 2.3, float(y) / 2.3, 9u) - 0.5) * 4.0;
+  vec3 c = vec3(243.0, 237.0, 226.0) + n, h = c;
+  int gi = x / 24, gj = y / 24;
+  float fx = float(x - gi * 24) / 24.0, fy = float(y - gj * 24) / 24.0;
+  vec4 M[2];
+  for (int L = 0; L < 2; L++) M[L] = (texelFetch(uMottle, ivec3(gi, gj, L), 0) * (1.0 - fx) + texelFetch(uMottle, ivec3(gi + 1, gj, L), 0) * fx) * (1.0 - fy)
+                                  + (texelFetch(uMottle, ivec3(gi, gj + 1, L), 0) * (1.0 - fx) + texelFetch(uMottle, ivec3(gi + 1, gj + 1, L), 0) * fx) * fy;
+  for (int q = 0; q < 8; q++) {
+    ivec2 s = ivec2(x, y) + uShift[q];
+    if (s.x < 0 || s.y < 0 || s.x >= uW || s.y >= uH) continue;
+    int b = int(texelFetch(uPlate, ivec3(s, q), 0).r * 255.0 + 0.5);
+    if (b > 252) continue;                                             // d < 0.008
+    float d = 1.0 - float(b) / 255.0, m = M[q >> 2][q & 3];
+    c *= 1.0 - d * m * uInk[q];
+    vec4 S = uScreen[q];
+    float X = float(x) - S.z, Y = float(y) - S.w;
+    vec2 f = fract(vec2(X * S.x + Y * S.y, -X * S.y + Y * S.x));
+    float cov = b > 127 ? (sqrt(d * IP) - length(f - 0.5)) * uPitch + 0.5          // d <= 0.5: dots
+                        : 0.5 - (sqrt((1.0 - d) * IP) - length(min(f, 1.0 - f))) * uPitch;   // else holes
+    if (cov <= 0.0) continue;
+    cov = min(cov, 1.0) * m;
+    if (b < 51 && hashu(x, y, uSeed[q]) < 34359739u) cov *= 0.5;       // d > 0.8 and hash2 < 0.008
+    h *= 1.0 - cov * uInk[q];
+  }
+  outColor = vec4((c + (h - c) * uTex) / 255.0, 1.0);
+}`;
+  let GPU = null;                                                    // one WebGL2 context for every print; false once it has failed
+  function gpu() {
+    if (GPU && !GPU.gl.isContextLost()) return GPU;
+    if (GPU === false) return null;
+    const cv = document.createElement('canvas'), gl = cv.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false, premultipliedAlpha: false });
+    if (!gl) { GPU = false; return null; }
+    const prog = gl.createProgram();
+    for (const [type, src] of [[gl.VERTEX_SHADER, PRINT_VS], [gl.FRAGMENT_SHADER, PRINT_FS]]) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); gl.attachShader(prog, s); }
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { console.warn('WebGL print unavailable:', gl.getProgramInfoLog(prog)); GPU = false; return null; }
+    gl.useProgram(prog);
+    const u = {}; for (const n of ['uPlate', 'uMottle', 'uW', 'uH', 'uPitch', 'uTex', 'uScreen', 'uShift', 'uInk', 'uSeed']) u[n] = gl.getUniformLocation(prog, n);
+    gl.uniform1i(u.uPlate, 0); gl.uniform1i(u.uMottle, 1);
+    gl.uniform2iv(u.uShift, KEYS.flatMap((k) => [Math.round(-SCREEN[k][1]) | 0, Math.round(-SCREEN[k][2]) | 0]));
+    gl.uniform3fv(u.uInk, KEYS.flatMap((k) => INK[k].map((v) => 1 - v / 255)));
+    gl.uniform1uiv(u.uSeed, KEYS.map((k) => SCREEN[k][3]));
+    for (const unit of [0, 1]) {
+      gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D_ARRAY, gl.createTexture());
+      gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    }
+    gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+    return (GPU = { gl, cv, u, W: 0, H: 0, px: new Uint8Array(4) });
+  }
+  Plates.prototype.printGL = function (outCtx, opt = {}) {
+    const P = gpu(); if (!P) return false;
+    const { gl, u } = P, W = this.W, H = this.H, pitch = opt.pitch || 4.2;
+    if (P.W !== W || P.H !== H) {                                    // new size: canvas, plate layers, mottle grids
+      P.cv.width = P.W = W; P.cv.height = P.H = H; gl.viewport(0, 0, W, H); gl.uniform1i(u.uW, W); gl.uniform1i(u.uH, H);
+      gl.activeTexture(gl.TEXTURE0); gl.texImage3D(gl.TEXTURE_2D_ARRAY, 0, gl.R8, W, H, 8, 0, gl.RED, gl.UNSIGNED_BYTE, null);
+      const grids = KEYS.map((k) => mottle(W, H, SCREEN[k][3])), { gw, gh } = grids[0], data = new Float32Array(gw * gh * 8);
+      grids.forEach((g, q) => { for (let i = 0; i < gw * gh; i++) data[((q >> 2) * gw * gh + i) * 4 + (q & 3)] = g.grid[i]; });
+      gl.activeTexture(gl.TEXTURE1); gl.texImage3D(gl.TEXTURE_2D_ARRAY, 0, gl.RGBA32F, gw, gh, 2, 0, gl.RGBA, gl.FLOAT, data);
+    }
+    gl.activeTexture(gl.TEXTURE0);
+    KEYS.forEach((k, q) => gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, q, W, H, 1, gl.RED, gl.UNSIGNED_BYTE, this.p[k].canvas));
+    gl.uniform4fv(u.uScreen, KEYS.flatMap((k) => { const [ang, ox, oy] = SCREEN[k]; return [Math.cos(ang * DEG) / pitch, Math.sin(ang * DEG) / pitch, ox, oy]; }));
+    gl.uniform1f(u.uPitch, pitch); gl.uniform1f(u.uTex, opt.texture ?? 0.45);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, P.px);     // waits for the GPU (Chromium's finish() does not), so printMs is real
+    if (gl.isContextLost()) return false;
+    outCtx.save(); outCtx.setTransform(1, 0, 0, 1, 0, 0); outCtx.globalAlpha = 1; outCtx.globalCompositeOperation = 'copy'; outCtx.drawImage(P.cv, 0, 0); outCtx.restore();
+    return true;
   };
 
   // ------------------------------------------------------------ palettes
@@ -481,8 +579,10 @@
     for (let i = 1; i <= 4; i++) { const y = gl.base - 5 - (i * 10 / S.yearRain) * (gl.h - 10), t = (gl.base - y) / gl.h; pl.paint((g) => { g.moveTo(gx(t, 1) - 3, y); g.lineTo(gx(t, 1) - (i % 2 ? 9 : 14), y); }, full(C.ink), { stroke: 1.5, cap: 'butt' }); }
 
     // ------------------------------------------------------------- print
-    const ctx = outCanvas.getContext('2d');
-    pl.print(ctx, { pitch: S.pitch || 4.2, texture: S.texture ?? 0.45 });
+    for (const k of KEYS) pl.p[k].getImageData(0, 0, 1, 1);          // canvas drawing is deferred: finish it here, so printMs is the print alone
+    const ctx = outCanvas.getContext('2d'), popt = { pitch: S.pitch || 4.2, texture: S.texture ?? 0.45 }, t0 = performance.now();
+    const printed = S.print === 'webgl' && pl.printGL(ctx, popt) ? 'webgl' : (pl.print(ctx, popt), 'cpu');
+    const printMs = performance.now() - t0;
 
     // paper-white and wet marks printed last
     const paper = `rgb(${PAPER.join(',')})`;
@@ -533,7 +633,7 @@
     ctx.save(); ctx.globalAlpha = 0.55; ctx.strokeStyle = 'rgb(252,248,238)'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(gx(0.14, -1) + 8, gl.base - 14); ctx.lineTo(gx(0.86, -1) + 9, gTop + 14); ctx.stroke(); ctx.restore();
 
-    return { clouds: clouds.length, cloudCover: +measured.toFixed(3), snowCover: +snowMeasured.toFixed(3), rainStreaks, drops };
+    return { clouds: clouds.length, cloudCover: +measured.toFixed(3), snowCover: +snowMeasured.toFixed(3), rainStreaks, drops, print: printed, printMs: +printMs.toFixed(1) };
   }
 
   global.RisoWindow = { renderWindow };
