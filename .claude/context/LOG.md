@@ -37,3 +37,12 @@ Entry format:
 - open: scene drawing, not the print, limits play-the-year (January ~3.3 s per frame here)
 - open: the approved frames mix rules: January uses all-day values, June dry uses dry-day values (band 60.1-83.3, needle 83.3, cloud 47%) instead of the normals (61.0-81.7, 54%); the JSON has no year-to-date precipitation for the glass
 - next: Satej runs the speed test page on a laptop and pastes the results; then decide whether to speed up the plate upload or the scene drawing
+
+## 2026-11-10 | session 2 | web
+- did: added CLAUDE.md and ran each command in it. `build_data.py` reproduces the committed JSON except `meta.built`. `check_frames.py` passes at 0.007/255 per frame. `--webgl` passes: WebGL vs CPU 0.001/255 (max 1), 1.1x on SwiftShader.
+- decided: CLAUDE.md pins Playwright 1.63.0, because this sandbox's Chromium is build 1243, which 1.63.0 uses. Installed in a scratch venv; the global Python was restored to its original state.
+- rejected: `playwright install`, because the sandbox already has the browser.
+- broke/fixed: Playwright 1.56.0 failed with "Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1194". Fixed by using 1.63.0.
+- correction: the 2026-09-27 entry pins playwright==1.56.0. On this image, use 1.63.0.
+- open: the 10x WebGL target still needs a run on real hardware, as in the 2026-09-27 entry.
+- next: unchanged from 2026-09-27.
