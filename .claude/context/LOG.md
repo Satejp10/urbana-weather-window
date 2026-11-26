@@ -72,3 +72,9 @@ Entry format:
 - open: the scene is now about 95% of a frame (January about 1.4 s, June about 0.45 s, print 20-25 ms). That is fine for stills but too slow to draw play-the-year live, and scene tuning alone won't close a 14x gap. Play-the-year needs a design (frame rate, display size, rendering ahead) once the page exists.
 - open: why the laptop's print diff is larger (max 15 vs 1 here) is still not known.
 - next: recommended to Satej: the data-to-window step. Turn a date, hour and wet/dry choice into renderer params from the JSON, with sun and moon computed in JS, and check it against tools/frames.json. The page and play-the-year both need it.
+
+## 2026-11-26 | session 3, status report | web
+- did: wrote status report SR-urbana-weather-window-001 in `.claude/context/reports/`, the first one. Re-ran the checks for it: frames 0.007/255 each, WebGL vs CPU 0.001/255 (max 1), the pipeline rebuild changes only `meta.built`, January hue balance 49/49.
+- open: the moon depends on the year, so a typical day needs a rule for which year's moon to show. New this entry; the report lists it with Satej's other open questions (go on data-to-window, all-day vs dry-day values, where it ships, a wait before play-the-year).
+- open: `tools/huebal.py` uses Pillow's `getdata`, which Pillow 14 removes.
+- next: unchanged; waiting for Satej's go on the data-to-window step.
