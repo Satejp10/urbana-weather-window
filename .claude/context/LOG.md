@@ -64,3 +64,11 @@ Entry format:
 - decided: link the speed test page even though it is a private claude.ai page, because Satej asked for the link; the README says it is private.
 - open: no public demo until Satej decides where the page ships (HANDOFF section 8).
 - next: unchanged; Satej re-runs the speed test page.
+
+## 2026-11-26 | session 3, laptop re-run | web
+- did: Satej re-ran the speed test page at build cdb8f8c (Brave on Windows, Chromium 158). WebGL print 20-25 ms vs CPU 286-319 ms, so 12.9-14.2x. WebGL parts: upload 18-19 ms (was 42-45), shader 0.6-2 ms, copy under 1 ms. Prints still differ by 0.032/255 (max 15), the same as before the speed work.
+- did: scene times on the laptop: January 1377 ms (was 4281), June dry 444 (was 451), June wet 478. The earlier 943 ms for June wet was most likely noise: no June scene code changed, and that run's CPU print was also slow (752 ms).
+- decided: the WebGL print milestone in HANDOFF section 8 is done. WebGL vs CPU stays under 2/255, the print is at least 10x faster on the laptop, and there are no scene changes or new dependencies. The estimates from this sandbox held (about 12x, and about 1.4 s for January).
+- open: the scene is now about 95% of a frame (January about 1.4 s, June about 0.45 s, print 20-25 ms). That is fine for stills but too slow to draw play-the-year live, and scene tuning alone won't close a 14x gap. Play-the-year needs a design (frame rate, display size, rendering ahead) once the page exists.
+- open: why the laptop's print diff is larger (max 15 vs 1 here) is still not known.
+- next: recommended to Satej: the data-to-window step. Turn a date, hour and wet/dry choice into renderer params from the JSON, with sun and moon computed in JS, and check it against tools/frames.json. The page and play-the-year both need it.
