@@ -64,6 +64,24 @@
       g.restore();
     }
   };
+  // Same pixels as paint(path, inks, { ...opt, stroke: width }) for each [path, inks, width] in turn (checked byte for byte), but each plate is
+  // set up and clipped once: thousands of small marks (snow patches, twigs) cost a fraction of the time. Only clip, alpha and cap.
+  Plates.prototype.paintMany = function (items, opt = {}) {
+    for (const k of KEYS) {
+      if (!items.some((it) => it[1][k] !== undefined)) continue;
+      const g = this.p[k]; g.save();
+      if (opt.alpha != null) g.globalAlpha = opt.alpha;
+      for (const cf of [].concat(opt.clip || [])) { g.beginPath(); cf(g); g.clip(); }
+      for (const [path, inks, width] of items) {
+        const spec = inks[k]; if (spec === undefined) continue;
+        g.beginPath(); path(g);
+        const st = styleFor(g, spec, false);
+        if (width) { g.strokeStyle = st; g.lineWidth = width; g.lineCap = opt.cap || 'round'; g.lineJoin = 'round'; g.stroke(); }
+        else { g.fillStyle = st; g.fill(); }
+      }
+      g.restore();
+    }
+  };
   Plates.prototype.text = function (str, x, y, font, inks) {
     for (const k of KEYS) { if (inks[k] === undefined) continue; const g = this.p[k]; g.save(); g.font = font; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = grayOf(inks[k]); g.fillText(str, x, y); g.restore(); }
   };
@@ -207,7 +225,9 @@ void main() {
       gl.activeTexture(gl.TEXTURE1); gl.texImage3D(gl.TEXTURE_2D_ARRAY, 0, gl.RGBA32F, gw, gh, 2, 0, gl.RGBA, gl.FLOAT, data);
     }
     gl.activeTexture(gl.TEXTURE0);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);          // plates are opaque, so no value changes; it skips an un-premultiply pass
     KEYS.forEach((k, q) => gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, q, W, H, 1, gl.RED, gl.UNSIGNED_BYTE, this.p[k].canvas));
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);         // WebGL 2 refuses it for array-data 3D uploads (the mottle grids)
     gl.uniform4fv(u.uScreen, KEYS.flatMap((k) => { const [ang, ox, oy] = SCREEN[k]; return [Math.cos(ang * DEG) / pitch, Math.sin(ang * DEG) / pitch, ox, oy]; }));
     gl.uniform1f(u.uPitch, pitch); gl.uniform1f(u.uTex, opt.texture ?? 0.45);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -408,11 +428,11 @@ void main() {
       smg.fillStyle = '#000'; let n = 0;
       const covNow = () => { const d = smg.getImageData(0, 0, sm.width, sm.height).data; let on = 0; for (let i = 3; i < d.length; i += 4) on += d[i] > 127; return on / (sm.width * sm.height); };
       while (S.snowGround > 0 && n < snowC.length) { smg.beginPath(); blobs(smg, snowC[n], 0, 0.5, V.x, HOR); smg.fill(); n++; if (n % 25 === 0 || n === snowC.length) { snowMeasured = covNow(); if (snowMeasured >= S.snowGround) break; } }
-      for (const c of snowC.slice(0, n).sort((a, b) => a.y - b.y)) {
+      pl.paintMany(snowC.slice(0, n).sort((a, b) => a.y - b.y).flatMap((c) => {
         const far = smooth(3, 14, c.D), warm = smooth(V.x + 600, V.x, c.parts[0][0]) * warmK;
-        pl.paint((g) => blobs(g, c, -Math.max(0.7, c.parts[0][3] * 0.45)), full(mix(WINTER.snowShade, { V: 0.45, A: 0.2 }, far * 0.6)), { clip: groundClip });
-        pl.paint((g) => blobs(g, c), full(mix(mix(WINTER.snow, WINTER.snowWarm, warm * (1 - far)), { V: 0.2, A: 0.1, P: 0.08 }, far)), { clip: groundClip });
-      }
+        return [[(g) => blobs(g, c, -Math.max(0.7, c.parts[0][3] * 0.45)), full(mix(WINTER.snowShade, { V: 0.45, A: 0.2 }, far * 0.6))],
+          [(g) => blobs(g, c), full(mix(mix(WINTER.snow, WINTER.snowWarm, warm * (1 - far)), { V: 0.2, A: 0.1, P: 0.08 }, far))]];
+      }), { clip: groundClip });
       pl.paint((g) => {
         for (let D = 0.92; D < 2.1; D += 0.055) { const y = yD(D); if (y > GB) continue; for (let x = V.x; x < V.x + V.w; x += 5 + R() * 9) { if (R() < 0.3) continue; const l = lerp(2, 9, R()) * smooth(2.1, 1.0, D); g.moveTo(x, y); g.lineTo(x + l, y + (R() - 0.5)); } }
       }, full({ O: 0.3, V: 0.5, F: 0.2 }), { stroke: 1.5, cap: 'butt', clip: groundClip, alpha: 0.8 });
@@ -484,14 +504,16 @@ void main() {
         pl.paint((g) => circles(g, lobes, -litSide * cr * 0.18, cr * 0.12), full(veil(green(SUMMER.canopy))), { clip: (g) => circles(g, lobes) });
       }
     } else {
+      const twigs = [];                                               // painted together below, in the order they grow
       const branch = (x, y, len, ang, w, depth, col) => {
         if (depth <= 0 || len < 1.6) return;
         const x2 = x + Math.cos(ang) * len, y2 = y + Math.sin(ang) * len;
-        pl.paint((g) => { g.moveTo(x, y); g.lineTo(x2, y2); }, full(col), { stroke: w, clip: viewClip });
+        twigs.push([(g) => { g.moveTo(x, y); g.lineTo(x2, y2); }, full(col), w]);
         const n = 2 + (R() < 0.35 ? 1 : 0);
         for (let i = 0; i < n; i++) branch(x2, y2, len * lerp(0.66, 0.82, R()), ang + (i - (n - 1) / 2) * lerp(0.35, 0.6, R()) + (R() - 0.5) * 0.25, Math.max(0.7, w * 0.7), depth - 1, col);
       };
       for (let i = 0; i < 8; i++) { const tx = fx - 84 + i * 19 + (R() - 0.5) * 8; branch(tx, fb - 1, lerp(10, 15, R()), -Math.PI / 2 + (R() - 0.5) * 0.12, 2.4, 6, WINTER.trees); }
+      pl.paintMany(twigs, { clip: viewClip });
     }
     for (const [ex2, eh] of [[fx - 104, 44], [fx - 96, 36]]) pl.paint((g) => { for (let k = 0; k < 4; k++) { const yy = fb - k * eh * 0.24, hw = lerp(8, 3, k / 3); g.moveTo(ex2 - hw, yy); g.lineTo(ex2, yy - eh * 0.36); g.lineTo(ex2 + hw, yy); g.closePath(); } }, full(veil(summer ? green(SUMMER.evergreen) : { G: 0.55, F: 0.75, B: 0.1 })));
     const hx = fx - 34, hw = 38, hh = 22;
