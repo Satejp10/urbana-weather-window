@@ -58,3 +58,9 @@ Entry format:
 - open: why the laptop prints differ more (0.032, max 15) than here (0.001, max 1). Not known; Brave's anti-fingerprinting noise on canvas reads is one possible cause.
 - open: play-the-year will still not be smooth at full size. Scaled from here, a January frame should take about 1.4 s on the laptop, and June 0.3-0.9 s. Pre-rendering frames ahead of playback is one option; this is a design call.
 - next: Satej re-runs the speed test page (same link); then pick the next scene speed-up or a play-the-year approach.
+
+## 2026-11-26 | session 3, continued | web
+- did: rewrote README.md, which held only the title. It now has the three approved frames up top, a link row, a links table (speed test page, frames, data, log, dev guide, renderer, harness, params, handoff), the check commands with their pass limits, and the four data sources. Each source link was opened and checked.
+- decided: link the speed test page even though it is a private claude.ai page, because Satej asked for the link; the README says it is private.
+- open: no public demo until Satej decides where the page ships (HANDOFF section 8).
+- next: unchanged; Satej re-runs the speed test page.
