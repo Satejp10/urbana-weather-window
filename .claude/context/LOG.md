@@ -46,3 +46,15 @@ Entry format:
 - correction: the 2026-09-27 entry pins playwright==1.56.0. On this image, use 1.63.0.
 - open: the 10x WebGL target still needs a run on real hardware, as in the 2026-09-27 entry.
 - next: unchanged from 2026-09-27.
+
+## 2026-11-26 | session 3 | web
+- did: read Satej's laptop run of the speed test page (Brave on Windows, Chromium 158; Brave hides the GPU name). WebGL print 48-53 ms vs CPU 314-320 ms, so 6.1-6.6x. The wet frame read 14.2x, but its CPU median jumped to 752 ms (first render 480), so treat that one as noise. WebGL parts: upload 42-45 ms, shader 1-4 ms, copy about 0 ms. Prints differ by 0.032/255 (max 15), well under the 2.0 limit. Scene: January 4281 ms, June dry 451, June wet 943.
+- did: timed each part of the scene here. Snow patches took 83% of January (11,300 patches, 2 paints each, every paint clipping all 8 plates). Then trees 5%, the snow fit 4%, clouds 4%. In June, the cloud fit takes about 40% and grass blades about 33% of about 0.3 s.
+- did: added `Plates.paintMany` (one setup and clip per plate for a list of marks). Snow patches and winter twigs use it. January scene went from 2.7 s to 0.87 s here. All 8 plates and the output are byte-identical on all three frames, for both prints.
+- did: turned on UNPACK_PREMULTIPLY_ALPHA_WEBGL around the plate uploads. Upload went from 29-35 ms to 11-15 ms here, with the same output. Updated CLAUDE.md (paintMany, the upload flag, the new scene times, and byte-for-byte checks for speed work).
+- decided: kept one texture array for the plates, because 8 separate textures saved only about 4 ms more here and would need 8 samplers in the shader.
+- broke/fixed: with the flag on for the whole context, WebGL 2 refused the mottle grid upload (INVALID_OPERATION), and the WebGL print came out 46-61/255 off the CPU print. Fixed by turning the flag on only during the plate uploads. `--webgl` caught it.
+- open: does the WebGL print reach 10x on the laptop now? Scaling the upload gain here onto the laptop parts gives about 12x for the worst frame. Only a laptop run can show it.
+- open: why the laptop prints differ more (0.032, max 15) than here (0.001, max 1). Not known; Brave's anti-fingerprinting noise on canvas reads is one possible cause.
+- open: play-the-year will still not be smooth at full size. Scaled from here, a January frame should take about 1.4 s on the laptop, and June 0.3-0.9 s. Pre-rendering frames ahead of playback is one option; this is a design call.
+- next: Satej re-runs the speed test page (same link); then pick the next scene speed-up or a play-the-year approach.
